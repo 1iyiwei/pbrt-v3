@@ -133,8 +133,8 @@ void PFMLTIntegrator::Render(const Scene &scene) {
     Distribution1D bootstrap(&bootstrapWeights[0], nBootstrapSamples);
     Float b = bootstrap.funcInt * (maxDepth + 1);
     
-#define ZLB3 1
-    int totalM=0, acceptM=0, againM=0, zeroM=0;//zlb3
+#define PFMLT 1
+    int totalM=0, acceptM=0, againM=0, zeroM=0;//PFMLT
     
     // Run _nChains_ Markov chains in parallel
     Film &film = *camera->film;
@@ -165,8 +165,8 @@ void PFMLTIntegrator::Render(const Scene &scene) {
                                largeStepProbability, nSampleStreams);
             Point2f pCurrent;
             Spectrum LCurrent =
-            L(scene, arena, lightDistr, lightToIndex, sampler, depth, &pCurrent);//zlb2
-#if ZLB3
+            L(scene, arena, lightDistr, lightToIndex, sampler, depth, &pCurrent);
+#if PFMLT
             int CNT = 0;
             int MAXREP;
             if(maxRep == 0){
@@ -175,7 +175,7 @@ void PFMLTIntegrator::Render(const Scene &scene) {
             else{
                 MAXREP = std::min(maxRep, depth + 2);
             }
-#endif//ZLB3
+#endif//PFMLT
             // Run the Markov chain for _nChainMutations_ steps
             for (int64_t j = 0; j < nChainMutations; ++j) {
                 sampler.StartIteration();
@@ -186,17 +186,17 @@ void PFMLTIntegrator::Render(const Scene &scene) {
                 // Compute acceptance probability for proposed sample
                 Float accept = std::min((Float)1, LProposed.y() / LCurrent.y());
                 
-                totalM++;//zlb3
-#if ZLB3//just try again
+                totalM++;//PFMLT
+#if PFMLT//just try again
                 if(accept < 0.000001 && CNT < MAXREP){
                     CNT ++;
                     sampler.Reject();
 //                    j --;
-                    againM++;//zlb3
+                    againM++;//PFMLT
                     continue;
                 }
                 CNT = 0;
-#endif//ZLB3
+#endif//PFMLT
                 if(accept < 0.000001){
                     zeroM++;
                 }
@@ -211,7 +211,7 @@ void PFMLTIntegrator::Render(const Scene &scene) {
                 if (rng.UniformFloat() < accept) {
                     pCurrent = pProposed;
                     LCurrent = LProposed;
-                    acceptM++;//zlb3
+                    acceptM++;//PFMLT
                     sampler.Accept();
                     ++acceptedpfMutations;
                 } else
@@ -226,7 +226,7 @@ void PFMLTIntegrator::Render(const Scene &scene) {
         progress.Done();
     }
     
-    printf("totalM=%d, acceptM=%d, againM=%d, zeroM=%d\n", totalM, acceptM, againM, zeroM);//zlb3
+    printf("totalM=%d, acceptM=%d, againM=%d, zeroM=%d\n", totalM, acceptM, againM, zeroM);//PFMLT
     
     // Store final image computed with MLT
     camera->film->WriteImage(b / mutationsPerPixel);
